@@ -49,7 +49,7 @@
         </ul>
       </section>
     </section>
-    <footer>@{{ this.srcfilename }}</footer>
+    <footer>💾 @{{ this.srcfilename }}</footer>
   </div>
 </template>
 
