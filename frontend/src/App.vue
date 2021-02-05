@@ -1,16 +1,16 @@
 <template>
   <div>
-    <h2 v-if="errorMessage.length > 0">{{errorMessage}}</h2>
+    <h2 v-if="errorMessage.length > 0">{{ errorMessage }}</h2>
     <section class="todoapp" v-cloak>
       <header class="header">
         <h1>todos</h1>
         <div class="buttons">
           <ul class="filters">
             <li>
-              <a @click="saveAs">Save As</a>
+              <a @click="saveAs">导出</a>
             </li>
             <li>
-              <a @click="loadNewList">Load</a>
+              <a @click="loadNewList">导入</a>
             </li>
           </ul>
         </div>
@@ -21,7 +21,7 @@
           placeholder="What needs to be done?"
           v-model="newTodo"
           @keyup.enter="addTodo"
-        >
+        />
       </header>
       <section class="main" v-show="todos.length">
         <ul class="todo-list">
@@ -29,11 +29,11 @@
             class="todo"
             v-for="todo in todos"
             :key="todo.id"
-            :class="{completed: todo.completed, editing: todo == editedTodo}"
+            :class="{ completed: todo.completed, editing: todo == editedTodo }"
           >
             <div class="view">
-              <input class="toggle" type="checkbox" v-model="todo.completed">
-              <label @dblclick="editTodo(todo)">{{todo.title}}</label>
+              <input class="toggle" type="checkbox" v-model="todo.completed" />
+              <label @dblclick="editTodo(todo)">{{ todo.title }}</label>
               <button class="destroy" @click="removeTodo(todo)"></button>
             </div>
             <input
@@ -44,11 +44,12 @@
               @blur="doneEdit(todo)"
               @keyup.esc="cancelEdit(todo)"
               v-todo-focus="todo == editedTodo"
-            >
+            />
           </li>
         </ul>
       </section>
     </section>
+    <footer>@{{ this.srcfilename }}</footer>
   </div>
 </template>
 
@@ -56,7 +57,7 @@
 import "./assets/css/base.css";
 import "./assets/css/app.css";
 
-import Wails from '@wailsapp/runtime';
+import Wails from "@wailsapp/runtime";
 
 export default {
   name: "app",
@@ -66,11 +67,12 @@ export default {
       editedTodo: null,
       errorMessage: "",
       loading: false,
-      todos: []
+      todos: [],
+      srcfilename: "",
     };
   },
   methods: {
-    addTodo: function() {
+    addTodo: function () {
       var value = this.newTodo && this.newTodo.trim();
       if (!value) {
         return;
@@ -78,11 +80,11 @@ export default {
       this.todos.push({
         id: this.todos.length,
         title: value,
-        completed: false
+        completed: false,
       });
       this.newTodo = "";
     },
-    removeTodo: function(todo) {
+    removeTodo: function (todo) {
       var index = this.todos.indexOf(todo);
       this.todos.splice(index, 1);
 
@@ -91,12 +93,12 @@ export default {
       }
     },
 
-    editTodo: function(todo) {
+    editTodo: function (todo) {
       this.beforeEditCache = todo.title;
       this.editedTodo = todo;
     },
 
-    doneEdit: function(todo) {
+    doneEdit: function (todo) {
       if (!this.editedTodo) {
         return;
       }
@@ -106,25 +108,21 @@ export default {
         this.removeTodo(todo);
       }
     },
-    cancelEdit: function(todo) {
+    cancelEdit: function (todo) {
       this.editedTodo = null;
       todo.title = this.beforeEditCache;
     },
-    saveAs: function() {
-      window.backend.Todos.SaveAs(JSON.stringify(this.todos, null, 2));
+    saveAs: function () {
+      window.backend.Todos.SaveAs(JSON.stringify(this.todos));
     },
-    loadNewList: function() {
+    loadNewList: function () {
       window.backend.Todos.LoadNewList();
+      this.setSrcFilename();
     },
-    setErrorMessage: function(message) {
-      this.errorMessage = message;
-      setTimeout(() => {
-        this.errorMessage = "";
-      }, 3000);
-    },
-    loadList: function() {
+    loadList: function () {
+      this.setSrcFilename();
       window.backend.Todos.LoadList()
-        .then(list => {
+        .then((list) => {
           try {
             let todos = JSON.parse(list);
             this.loading = true;
@@ -133,43 +131,61 @@ export default {
             this.setErrorMessage("Unable to load todo list");
           }
         })
-        .catch(error => {
+        .catch((error) => {
           this.setErrorMessage(error.message);
         });
-    }
+    },
+    setErrorMessage: function (message) {
+      this.errorMessage = message;
+      setTimeout(() => {
+        this.errorMessage = "";
+      }, 3000);
+    },
+    setSrcFilename: function () {
+      window.backend.Todos.GetSrcFilename()
+        .then((file) => {
+          try {
+            this.srcfilename = file;
+          } catch (e) {
+            this.setErrorMessage("Unable to get data filename");
+          }
+        })
+        .catch((error) => {
+          this.setErrorMessage(error.message);
+        });
+    },
   },
   directives: {
-    "todo-focus": function(el, binding) {
+    "todo-focus": function (el, binding) {
       if (binding.value) {
         el.focus();
       }
-    }
+    },
   },
   watch: {
     todos: {
-      handler: function(todos) {
+      handler: function (todos) {
         if (this.loading) {
           this.loading = false;
           return;
         }
-        window.backend.Todos.SaveList(JSON.stringify(todos, null, 2));
+        window.backend.Todos.SaveList(JSON.stringify(todos));
       },
-      deep: true
-    }
+      deep: true,
+    },
   },
   mounted() {
     Wails.Events.On("filemodified", () => {
       this.loadList();
     });
 
-    Wails.Events.On("error", (message, number) => {
-      let result = number * 2;
-      this.setErrorMessage(`${message}: ${result}`);
+    Wails.Events.On("error", (msg) => {
+      this.setErrorMessage(msg);
     });
 
     // Load the list at the start
     this.loadList();
-  }
+  },
 };
 </script>
 <style>
